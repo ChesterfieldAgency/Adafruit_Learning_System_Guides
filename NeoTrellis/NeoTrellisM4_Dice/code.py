@@ -37,6 +37,7 @@ import busio
 
 trellis = adafruit_trellism4.TrellisM4Express()
 trellis.pixels.brightness = 0.05
+trellis.pixels.fill((0, 0, 0))
 
 i2c = busio.I2C(board.ACCELEROMETER_SCL, board.ACCELEROMETER_SDA)
 accelerometer = adafruit_adxl34x.ADXL345(i2c)
@@ -109,12 +110,13 @@ def shaken():
 
 
 d6 = 6
-
 while True:
-    trellis.pixels.fill((0, 0, 0))
     previous_reading = accelerometer.acceleration
 
-    animate_to(roll(d6))
-    timeout = time.monotonic() + 5.0
-    while len(trellis.pressed_keys) == 0 and time.monotonic() < timeout:
-        pass
+    pressed = trellis.pressed_keys
+
+    if shaken() or len(pressed) > 0:
+        animate_to(roll(d6))
+        timeout = time.monotonic()
+        while len(trellis.pressed_keys) == 0 and time.monotonic() < timeout:
+            pass
