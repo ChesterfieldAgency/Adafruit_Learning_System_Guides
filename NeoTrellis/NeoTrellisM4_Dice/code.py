@@ -44,7 +44,7 @@ accelerometer = adafruit_adxl34x.ADXL345(i2c)
 
 
 number_patterns = [
-    ["*  ", " * ", "  *"],  # 0 # Just for animation
+    ["*  ", " * ", "  *"],  # 0
     ["   ", " * ", "   "],  # 1
     ["*  ", "   ", "  *"],  # 2
     ["*  ", " * ", "  *"],  # 3
@@ -55,12 +55,6 @@ number_patterns = [
 
 
 def display_digit(number, offset, color):
-    """Display a digit.
-    number     -- the number (0-9) to display
-    offset     -- the left-most column of the displayed digit
-    color      -- the RGB color to use to display the digit
-    force_zero -- whether to leave a 0 blank (False) or display it
-    """
     time.sleep(0.1)
     bits = number_patterns[number]
     for row in range(3):
@@ -71,17 +65,15 @@ def display_digit(number, offset, color):
                 trellis.pixels[col + offset, row] = color
 
 
-def display_number(numbers, color, position=0):
-    display_digit(numbers[0], 5, color)
-    display_digit(numbers[1], 1, color)
-    for h in range(3):
-        trellis.pixels[0, h] = (0, 0, 0)
+def display_number(numbers, color):
+    display_digit(numbers[0], 0, color)
+    display_digit(numbers[1], 5, color)
 
 
 def animate_to(numbers, color=(255, 0, 0)):
     for _ in range(6):
         trellis.pixels.fill((0, 0, 0))
-        display_number([random.randint(1, 6), random.randint(1, 6)], color, 0)
+        display_number([random.randint(1, 6), random.randint(1, 6)], color)
         time.sleep(0.1)
     trellis.pixels.fill((0, 0, 0))
     display_number(numbers, color)
