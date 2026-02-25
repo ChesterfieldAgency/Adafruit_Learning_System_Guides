@@ -43,6 +43,60 @@ i2c = busio.I2C(board.ACCELEROMETER_SCL, board.ACCELEROMETER_SDA)
 accelerometer = adafruit_adxl34x.ADXL345(i2c)
 
 
+class Player:
+    def __init__(self, name, location):
+        self.name = name
+        self.location = location
+        self.in_turn = False
+
+
+class Game:
+    def __init__(self):
+        self.players = [
+            Player("LEFT", (0, 3)),
+            Player("RIGHT", (7, 3)),
+        ]
+        self.active_player = 0
+        self.stage = "START"
+
+    @property
+    def current_player(self):
+        return self.players[self.active_player]
+
+    @property
+    def non_active_player(self):
+        return self.players[(self.active_player + 1) % len(self.players)]
+
+    def switch_player(self):
+        self.active_player = (self.active_player + 1) % len(self.players)
+        return self.players[self.active_player]
+
+    def next_stage(self):
+        if self.stage == "START":
+            self.stage = "ROLLING"
+        elif self.stage == "ROLLING":
+            self.stage = "MOVING"
+        elif self.stage == "MOVING":
+            self.switch_player()
+            self.stage = "END"
+        elif self.stage == "END":
+            self.stage = "ROLLING"
+        self.set_buttons()
+
+    def set_buttons(self):
+        if self.stage == "START":
+            for player in self.players:
+                trellis.pixels[player.location] = (0, 255, 0)
+        elif self.stage == "ROLLING":
+            for player in self.players:
+                trellis.pixels[player.location] = (0, 0, 0)
+        elif self.stage == "MOVING":
+            trellis.pixels[self.current_player.location] = (255, 0, 0)
+        elif self.stage == "END":
+            trellis.pixels[self.non_active_player.location] = (0, 0, 0)
+            trellis.pixels[self.current_player.location] = (0, 255, 0)
+
+
 number_patterns = [
     ["*  ", " * ", "  *"],  # 0
     ["   ", " * ", "   "],  # 1
@@ -87,28 +141,24 @@ previous_reading = [None, None, None]
 bound = 4.0
 
 
-def shaken():
-    global previous_reading
-    result = False
-    x, y, z = accelerometer.acceleration
-    if previous_reading[0] is not None:
-        result = (
-            math.fabs(previous_reading[0] - x) > bound
-            and math.fabs(previous_reading[1] - y) > bound
-            and math.fabs(previous_reading[2] - z) > bound
-        )
-    previous_reading = (x, y, z)
-    return result
-
-
 d6 = 6
+game = Game()
+game.set_buttons()
+
 while True:
     previous_reading = accelerometer.acceleration
 
     pressed = trellis.pressed_keys
+    is_pressed = len(pressed) > 0 and pressed[0] == game.current_player.location
 
-    if shaken() or len(pressed) > 0:
+    if game.stage == "START" and (
+        is_pressed or game.non_active_player.location in pressed
+    ):
+        game.active_player = 0 if pressed[0] == game.players[0].location else 1
+
+    if is_pressed:
+        game.next_stage()
+
+    if is_pressed and game.stage == "ROLLING":
         animate_to(roll(d6))
-        timeout = time.monotonic()
-        while len(trellis.pressed_keys) == 0 and time.monotonic() < timeout:
-            pass
+        game.next_stage()
